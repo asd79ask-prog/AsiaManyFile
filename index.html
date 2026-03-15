@@ -7,27 +7,34 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
-    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;background:#f5f7fb;color:#1f2937}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;background:#f5f7fb;color:#1f2937}
     header{background:#0f172a;color:#fff;padding:18px 16px;text-align:center}
-    .container{max-width:1300px;margin:18px auto;padding:0 12px 30px}
+    .container{max-width:1320px;margin:18px auto;padding:0 12px 30px}
     .card{background:#fff;border-radius:16px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:16px;margin-bottom:16px}
-    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.btn,input,select{border:1px solid #d1d5db;border-radius:12px;padding:12px 14px;font-size:15px;background:#fff}
-    .btn{background:#2563eb;color:#fff;border:none;cursor:pointer;font-weight:700}.btn:hover{background:#1d4ed8}.btn.gray{background:#475569}.btn.orange{background:#ea580c}.btn.purple{background:#7c3aed}
+    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .btn,input,select{border:1px solid #d1d5db;border-radius:12px;padding:12px 14px;font-size:15px;background:#fff}
+    .btn{background:#2563eb;color:#fff;border:none;cursor:pointer;font-weight:700}.btn:hover{background:#1d4ed8}.btn.gray{background:#475569}.btn.orange{background:#ea580c}.btn.purple{background:#7c3aed}.btn.green{background:#0f766e}
     .hint,.small{font-size:13px;color:#64748b;line-height:1.8}.error,.success{padding:10px 12px;border-radius:12px;display:none;white-space:pre-wrap}.error{color:#b91c1c;background:#fef2f2;border:1px solid #fecaca}.success{color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0}
     .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.stat{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}.label{font-size:13px;color:#64748b;margin-bottom:8px}.value{font-size:22px;font-weight:800;word-break:break-word}
-    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid-1{display:grid;grid-template-columns:1fr;gap:16px}@media(max-width:960px){.grid-2{grid-template-columns:1fr}}
     .section-title{font-size:18px;font-weight:800;margin-bottom:12px;color:#0f172a}.table-wrap{overflow-x:auto;border:1px solid #e5e7eb;border-radius:14px}
-    table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px}th{background:#f8fafc} tr:hover td{background:#f9fafb}
-    #networkSvg{width:100%;min-height:520px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
+    table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-size:14px;vertical-align:middle}th{background:#f8fafc;position:sticky;top:0} tr:hover td{background:#f9fafb}
+    #networkSvg{width:100%;min-height:620px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
+    #sharedMap{width:100%;height:520px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
     .badge{display:inline-block;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:4px 10px;border-radius:999px;font-size:12px;margin-inline-start:6px;margin-top:4px}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;direction:ltr;text-align:left}
+    .legend{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 0}.legend-item{display:flex;align-items:center;gap:7px;font-size:13px;color:#475569}.sw{width:14px;height:14px;border-radius:50%}.sw.file{background:#10b981}.sw.num{background:#2563eb}.sw.imei{background:#f59e0b;border-radius:4px}
+    .site-check{transform:scale(1.15)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;direction:ltr;display:inline-block}
   </style>
 </head>
 <body>
 <header>
   <h1 style="margin:0">مقاطعة عدة سجلات مكالمات</h1>
-  <p style="margin:8px 0 0;opacity:.9">الأرقام المشتركة + IMEI المشتركة + المواقع + التقاطع الزمني</p>
+  <p style="margin:8px 0 0;opacity:.9">الأرقام المشتركة + IMEI المشتركة + المواقع المشتركة + خريطة Esri</p>
 </header>
 <div class="container">
   <div class="card">
@@ -45,11 +52,12 @@
         <option value="1440">تقاطع زمني 24 ساعة</option>
       </select>
       <button class="btn" id="analyzeBtn">تحليل المقاطعة</button>
+      <button class="btn green" id="showSelectedSitesBtn">عرض المواقع المحددة على الخريطة</button>
       <button class="btn orange" id="pdfBtn">تصدير PDF</button>
       <button class="btn purple" id="excelBtn">تصدير Excel</button>
       <button class="btn gray" id="clearBtn">مسح</button>
     </div>
-    <div class="hint">هذه الصفحة مجرّبة على ملفات آسيا سيل التي أعطيتني إياها. تعرض الأرقام بدون 964، وتُبقي IMEI فقط، وتستبعد IMSI بالكامل. كما تستبعد الأرقام القصيرة ورسائل الترويج وأسماء الشركات، وتقبل فقط أرقام الموبايل العراقية الصحيحة مثل 77 و78 و79 و75.</div>
+    <div class="hint">تُقبل فقط أرقام الموبايل العراقية الصحيحة بعد حذف 964 مثل 75 و77 و78 و79. العقدة البرتقالية في الرسم تمثل <b>IMEI</b> وليست رقم هاتف. تم تغيير شكلها إلى مستطيل وإظهار كلمة IMEI لتكون واضحة.</div>
     <div id="successBox" class="success"></div>
     <div id="errorBox" class="error"></div>
   </div>
@@ -75,7 +83,8 @@
     <div class="grid-2">
       <div class="card">
         <div class="section-title">المواقع المشتركة</div>
-        <div class="table-wrap"><table id="sharedSitesTable"><thead><tr><th>#</th><th>الموقع</th><th>عدد الملفات</th><th>الأرقام</th><th>عدد السجلات</th></tr></thead><tbody></tbody></table></div>
+        <div class="small">يمكنك اختيار أكثر من موقع ثم الضغط على <b>عرض المواقع المحددة على الخريطة</b>. سيتم رسم دائرة تقريبية نصف قطرها 300 متر حول كل برج.</div>
+        <div class="table-wrap"><table id="sharedSitesTable"><thead><tr><th>#</th><th>تحديد</th><th>الموقع</th><th>عدد الملفات</th><th>الأرقام</th><th>عدد السجلات</th><th>المدينة</th><th>الإحداثيات</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="card">
         <div class="section-title">التقاطع الزمني</div>
@@ -85,9 +94,25 @@
     </div>
 
     <div class="card">
+      <div class="section-title">خريطة المواقع المشتركة</div>
+      <div class="small">الخريطة من نوع <b>Esri World Street Map</b> لعرض الشوارع والمباني بشكل أوضح. إذا كانت منطقة معينة لا تظهر فيها تفاصيل الأبنية بشكل كافٍ فهذا يعتمد على مستوى تغطية Esri في تلك المنطقة.</div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn green" id="selectAllSitesBtn">تحديد كل المواقع الظاهرة</button>
+        <button class="btn gray" id="clearSiteSelectionBtn">إلغاء تحديد المواقع</button>
+        <span class="small" id="selectedSitesCount">عدد المواقع المحددة: 0</span>
+      </div>
+      <div id="sharedMap"></div>
+    </div>
+
+    <div class="card">
       <div class="section-title">الرسم الشبكي</div>
-      <div class="small">الأزرق = رقم هاتف، البرتقالي = IMEI، الأخضر = ملف.</div>
-      <svg id="networkSvg" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="small">الأخضر = ملف، الأزرق = رقم هاتف، البرتقالي = IMEI. تم تكبير العقد وتكييف الخط حتى لا يخرج النص من داخلها.</div>
+      <div class="legend">
+        <div class="legend-item"><span class="sw file"></span> ملف</div>
+        <div class="legend-item"><span class="sw num"></span> رقم هاتف</div>
+        <div class="legend-item"><span class="sw imei"></span> IMEI</div>
+      </div>
+      <svg id="networkSvg" viewBox="0 0 1400 820" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
   </div>
 </div>
@@ -103,14 +128,30 @@ const timeWindowSelect = document.getElementById('timeWindowSelect');
 const resultsDiv = document.getElementById('results');
 const successBox = document.getElementById('successBox');
 const errorBox = document.getElementById('errorBox');
+const showSelectedSitesBtn = document.getElementById('showSelectedSitesBtn');
+const selectAllSitesBtn = document.getElementById('selectAllSitesBtn');
+const clearSiteSelectionBtn = document.getElementById('clearSiteSelectionBtn');
+const selectedSitesCount = document.getElementById('selectedSitesCount');
 let latest = null;
+let map = null;
+let mapLayerGroup = null;
+let selectedSiteKeys = new Set();
 
+function initMap(){
+  if(map) return;
+  map = L.map('sharedMap');
+  const esriStreet = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri'
+  });
+  esriStreet.addTo(map);
+  map.setView([33.3152,44.3661], 6);
+  mapLayerGroup = L.layerGroup().addTo(map);
+}
 function showError(msg){ errorBox.style.display='block'; errorBox.textContent=msg; }
 function hideError(){ errorBox.style.display='none'; errorBox.textContent=''; }
 function showSuccess(msg){ successBox.style.display='block'; successBox.textContent=msg; }
 function hideSuccess(){ successBox.style.display='none'; successBox.textContent=''; }
 function normalizeHeader(h){ return String(h||'').trim().replace(/\s+/g,'_').toUpperCase(); }
-function strip964(num){ let s=String(num||'').replace(/\D/g,''); if(s.startsWith('964') && s.length>10) s=s.slice(3); if(s.startsWith('0') && s.length===11) s=s.slice(1); return s; }
 function isValidIraqiMobile(s){ return /^(75|77|78|79)\d{8}$/.test(s); }
 function normalizePhone(v){
   let raw = String(v||'').trim();
@@ -126,8 +167,7 @@ function normalizePhone(v){
 function parseDateTime(s){ if(!s) return null; const str=String(s).trim(); const m=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/); if(m){ return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6])); } const d=new Date(str); return isNaN(d.getTime())?null:d; }
 function fmtDate(d){ if(!d) return '-'; const x=new Date(d); if(isNaN(x)) return '-'; const yyyy=x.getFullYear(), mm=String(x.getMonth()+1).padStart(2,'0'), dd=String(x.getDate()).padStart(2,'0'); const hh=String(x.getHours()).padStart(2,'0'), mi=String(x.getMinutes()).padStart(2,'0'), ss=String(x.getSeconds()).padStart(2,'0'); return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`; }
 function getRowValue(row,names){ for(const n of names){ if(row[n]!==undefined && row[n]!==null) return row[n]; } return ''; }
-function fillTable(id, rows, cols){ const tbody=document.querySelector(`#${id} tbody`); tbody.innerHTML=''; rows.forEach((r,i)=>{ const tr=document.createElement('tr'); [i+1,...cols.map(c=>r[c]??'')].forEach(v=>{ const td=document.createElement('td'); td.textContent=v; tr.appendChild(td); }); tbody.appendChild(tr); }); }
-function makeLink(text,url){ return {text, url}; }
+function shortFileName(name){ return String(name||'').replace(/^.*[\\/]/,''); }
 
 async function readFile(file){
   const ext = file.name.split('.').pop().toLowerCase();
@@ -148,101 +188,52 @@ async function readFile(file){
 }
 
 function standardizeFileRows(fileData){
-  return fileData.rows.map(row=>{
-    const t = String(getRowValue(row,['E_REPORT','EVENT_TYPE','TYPE'])).trim();
-    return {
-      file: fileData.name,
-      eReport: t,
-      caller: normalizePhone(getRowValue(row,['CALLER_NUMBER','CALLING_NUMBER','A_NUMBER'])),
-      called: normalizePhone(getRowValue(row,['CALLED_NUMBER','B_NUMBER'])),
-      dt: parseDateTime(getRowValue(row,['CALL_INITIAL_TIME','START_TIME','DATE_TIME'])),
-      imei: String(getRowValue(row,['CHARGED_MOBILE_USER_IMEI','IMEI'])).trim(),
-      site: String(getRowValue(row,['SITE_NAME','CELL_NAME','LOCATION_NAME'])).trim() || 'غير معروف',
-      city: String(getRowValue(row,['CITY'])).trim() || 'غير معروف',
-      lat: String(getRowValue(row,['LAT','LATITUDE'])).trim(),
-      lon: String(getRowValue(row,['LON','LONGITUDE','LNG'])).trim(),
-      raw: row
-    };
-  }).filter(r => r.caller || r.called);
+  return fileData.rows.map(row=>({
+    file: shortFileName(fileData.name),
+    caller: normalizePhone(getRowValue(row,['CALLER_NUMBER','CALLING_NUMBER','A_NUMBER'])),
+    called: normalizePhone(getRowValue(row,['CALLED_NUMBER','B_NUMBER'])),
+    dt: parseDateTime(getRowValue(row,['CALL_INITIAL_TIME','START_TIME','DATE_TIME'])),
+    imei: String(getRowValue(row,['CHARGED_MOBILE_USER_IMEI','IMEI'])).trim(),
+    site: String(getRowValue(row,['SITE_NAME','CELL_NAME','LOCATION_NAME'])).trim() || 'غير معروف',
+    city: String(getRowValue(row,['CITY'])).trim() || 'غير معروف',
+    lat: String(getRowValue(row,['LAT','LATITUDE'])).trim(),
+    lon: String(getRowValue(row,['LON','LONGITUDE','LNG'])).trim(),
+  })).filter(r => r.caller || r.called);
 }
 
 function analyzeIntersection(allRows, fileNames, minFiles, timeWindowMinutes){
-  const numMap = new Map();
-  const imeiMap = new Map();
-  const siteMap = new Map();
-  const rowsByNumber = new Map();
-  const timeOverlaps = [];
-
+  const numMap = new Map(), imeiMap = new Map(), siteMap = new Map(), rowsByNumber = new Map(), timeOverlaps = [];
   function pushNum(num, row){
     if(!num) return;
     if(!numMap.has(num)) numMap.set(num, {number:num, files:new Set(), records:0, first:null, last:null, imeis:new Set(), sites:new Set()});
-    const x = numMap.get(num);
-    x.files.add(row.file); x.records += 1;
+    const x = numMap.get(num); x.files.add(row.file); x.records += 1;
     if(row.dt && (!x.first || row.dt < x.first)) x.first = row.dt;
     if(row.dt && (!x.last || row.dt > x.last)) x.last = row.dt;
-    if(row.imei) x.imeis.add(row.imei);
-    if(row.site) x.sites.add(row.site);
-    if(!rowsByNumber.has(num)) rowsByNumber.set(num, []);
-    rowsByNumber.get(num).push(row);
+    if(row.imei) x.imeis.add(row.imei); if(row.site) x.sites.add(row.site);
+    if(!rowsByNumber.has(num)) rowsByNumber.set(num, []); rowsByNumber.get(num).push(row);
   }
-
   allRows.forEach(row=>{
-    pushNum(row.caller, row);
-    pushNum(row.called, row);
+    pushNum(row.caller,row); pushNum(row.called,row);
     if(row.imei){
-      if(!imeiMap.has(row.imei)) imeiMap.set(row.imei, {imei:row.imei, files:new Set(), numbers:new Set(), first:null, last:null});
-      const i = imeiMap.get(row.imei);
-      i.files.add(row.file);
-      if(row.caller) i.numbers.add(row.caller);
-      if(row.called) i.numbers.add(row.called);
-      if(row.dt && (!i.first || row.dt < i.first)) i.first = row.dt;
-      if(row.dt && (!i.last || row.dt > i.last)) i.last = row.dt;
+      if(!imeiMap.has(row.imei)) imeiMap.set(row.imei,{imei:row.imei,files:new Set(),numbers:new Set(),first:null,last:null});
+      const i=imeiMap.get(row.imei); i.files.add(row.file); if(row.caller) i.numbers.add(row.caller); if(row.called) i.numbers.add(row.called);
+      if(row.dt && (!i.first || row.dt < i.first)) i.first=row.dt; if(row.dt && (!i.last || row.dt > i.last)) i.last=row.dt;
     }
     const skey = `${row.site}|||${row.city}|||${row.lat}|||${row.lon}`;
-    if(!siteMap.has(skey)) siteMap.set(skey, {site:row.site, city:row.city, lat:row.lat, lon:row.lon, files:new Set(), numbers:new Set(), records:0});
-    const s = siteMap.get(skey);
-    s.files.add(row.file); s.records += 1;
-    if(row.caller) s.numbers.add(row.caller);
-    if(row.called) s.numbers.add(row.called);
+    if(!siteMap.has(skey)) siteMap.set(skey,{key:skey,site:row.site,city:row.city,lat:row.lat,lon:row.lon,files:new Set(),numbers:new Set(),records:0});
+    const s=siteMap.get(skey); s.files.add(row.file); s.records+=1; if(row.caller) s.numbers.add(row.caller); if(row.called) s.numbers.add(row.called);
   });
-
-  const sharedNumbers = Array.from(numMap.values()).filter(x => {
-    const threshold = minFiles === 999 ? fileNames.length : minFiles;
-    return x.files.size >= threshold;
-  }).map(x=>({
-    number:x.number,
-    fileCount:x.files.size,
-    files:Array.from(x.files).join(' | '),
-    records:x.records,
-    first:fmtDate(x.first),
-    last:fmtDate(x.last),
-    sharedImei: Array.from(x.imeis).slice(0,3).join(' | '),
-    _filesSet:x.files
+  const threshold = minFiles === 999 ? fileNames.length : minFiles;
+  const sharedNumbers = Array.from(numMap.values()).filter(x=>x.files.size>=threshold).map(x=>({
+    number:x.number,fileCount:x.files.size,files:Array.from(x.files).join(' | '),records:x.records,first:fmtDate(x.first),last:fmtDate(x.last),sharedImei:Array.from(x.imeis).slice(0,3).join(' | ')
   })).sort((a,b)=>b.fileCount-a.fileCount || b.records-a.records || a.number.localeCompare(b.number));
-
-  const sharedImei = Array.from(imeiMap.values()).filter(x => {
-    const threshold = minFiles === 999 ? fileNames.length : minFiles;
-    return x.files.size >= threshold;
-  }).map(x=>({
-    imei:x.imei,
-    fileCount:x.files.size,
-    numbers:Array.from(x.numbers).slice(0,8).join(' | '),
-    first:fmtDate(x.first),
-    last:fmtDate(x.last)
+  const sharedImei = Array.from(imeiMap.values()).filter(x=>x.files.size>=threshold).map(x=>({
+    imei:x.imei,fileCount:x.files.size,numbers:Array.from(x.numbers).slice(0,8).join(' | '),first:fmtDate(x.first),last:fmtDate(x.last)
   })).sort((a,b)=>b.fileCount-a.fileCount || a.imei.localeCompare(b.imei));
-
-  const sharedSites = Array.from(siteMap.values()).filter(x => {
-    const threshold = minFiles === 999 ? fileNames.length : minFiles;
-    return x.files.size >= threshold;
-  }).map(x=>({
-    site:x.site,
-    fileCount:x.files.size,
-    numbers:Array.from(x.numbers).slice(0,8).join(' | '),
-    records:x.records,
-    lat:x.lat, lon:x.lon, city:x.city
+  const sharedSites = Array.from(siteMap.values()).filter(x=>x.files.size>=threshold).map(x=>({
+    key:x.key,site:x.site,fileCount:x.files.size,numbers:Array.from(x.numbers).slice(0,8).join(' | '),records:x.records,lat:x.lat,lon:x.lon,city:x.city,coord:(x.lat && x.lon)? `${x.lat}, ${x.lon}` : '-'
   })).sort((a,b)=>b.fileCount-a.fileCount || b.records-a.records);
 
-  // time overlaps for shared numbers only
   for(const num of sharedNumbers.map(x=>x.number)){
     const arr = (rowsByNumber.get(num)||[]).filter(r=>r.dt).sort((a,b)=>a.dt-b.dt);
     for(let i=0;i<arr.length;i++){
@@ -250,56 +241,98 @@ function analyzeIntersection(allRows, fileNames, minFiles, timeWindowMinutes){
         if(arr[i].file === arr[j].file) continue;
         const diff = Math.abs(arr[j].dt - arr[i].dt) / 60000;
         if(diff > timeWindowMinutes) break;
-        const sameSite = arr[i].site === arr[j].site ? arr[i].site : `${arr[i].site} / ${arr[j].site}`;
-        timeOverlaps.push({ number:num, file1:arr[i].file, file2:arr[j].file, diffMin:diff.toFixed(1), site:sameSite, imei:[arr[i].imei, arr[j].imei].filter(Boolean).join(' | '), time1:fmtDate(arr[i].dt), time2:fmtDate(arr[j].dt) });
+        timeOverlaps.push({number:num,file1:arr[i].file,file2:arr[j].file,diffMin:diff.toFixed(1),site:arr[i].site===arr[j].site?arr[i].site:`${arr[i].site} / ${arr[j].site}`,imei:[arr[i].imei,arr[j].imei].filter(Boolean).join(' | '),time1:fmtDate(arr[i].dt),time2:fmtDate(arr[j].dt)});
       }
     }
   }
-
-  const stats = {
-    files: fileNames.length,
-    totalRows: allRows.length,
-    sharedNumbers: sharedNumbers.length,
-    sharedImei: sharedImei.length,
-    sharedSites: sharedSites.length,
-    timeOverlaps: timeOverlaps.length
-  };
-  return {stats, sharedNumbers, sharedImei, sharedSites, timeOverlaps};
+  return {stats:{files:fileNames.length,totalRows:allRows.length,sharedNumbers:sharedNumbers.length,sharedImei:sharedImei.length,sharedSites:sharedSites.length,timeOverlaps:timeOverlaps.length},sharedNumbers,sharedImei,sharedSites,timeOverlaps};
 }
 
 function renderStats(stats){
-  const box = document.getElementById('stats');
-  const items = [ ['عدد الملفات', stats.files], ['إجمالي السجلات المقروءة', stats.totalRows], ['الأرقام المشتركة', stats.sharedNumbers], ['IMEI المشتركة', stats.sharedImei], ['المواقع المشتركة', stats.sharedSites], ['التقاطعات الزمنية', stats.timeOverlaps] ];
-  box.innerHTML = items.map(([k,v])=>`<div class="stat"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
+  const items = [['عدد الملفات',stats.files],['إجمالي السجلات المقروءة',stats.totalRows],['الأرقام المشتركة',stats.sharedNumbers],['IMEI المشتركة',stats.sharedImei],['المواقع المشتركة',stats.sharedSites],['التقاطعات الزمنية',stats.timeOverlaps]];
+  document.getElementById('stats').innerHTML = items.map(([k,v])=>`<div class="stat"><div class="label">${k}</div><div class="value">${v}</div></div>`).join('');
 }
+
+function fitTextToCircle(text, radius){
+  const len = String(text).length;
+  if(radius >= 36) return len > 10 ? 12 : 15;
+  if(radius >= 30) return len > 10 ? 10 : 13;
+  return len > 8 ? 9 : 11;
+}
+function ellipseText(text,maxLen){ text=String(text||''); return text.length>maxLen ? text.slice(0,maxLen-1)+'…' : text; }
 
 function renderNetwork(fileNames, analysis){
   const svg = document.getElementById('networkSvg');
-  const W=1200,H=700;
-  svg.innerHTML='';
-  const files = fileNames.map((f,i)=>({id:'F'+i,label:f,x:140,y:80+i*((H-160)/Math.max(1,fileNames.length-1||1)),color:'#10b981'}));
-  const nums = analysis.sharedNumbers.slice(0,12).map((n,i)=>({id:'N'+i,label:n.number,x:600,y:70+i*50,color:'#2563eb'}));
-  const imeis = analysis.sharedImei.slice(0,8).map((m,i)=>({id:'I'+i,label:m.imei.slice(-6),full:m.imei,x:1000,y:100+i*65,color:'#f59e0b'}));
-  function circle(node, r){
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    c.setAttribute('cx',node.x); c.setAttribute('cy',node.y); c.setAttribute('r',r); c.setAttribute('fill',node.color); c.setAttribute('stroke','#0f172a'); c.setAttribute('stroke-width','1.5');
-    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('x',node.x); t.setAttribute('y',node.y+4); t.setAttribute('text-anchor','middle'); t.setAttribute('font-size', r<28?'11':'12'); t.setAttribute('fill','#fff'); t.setAttribute('font-weight','700'); t.textContent=node.label;
-    g.appendChild(c); g.appendChild(t); svg.appendChild(g);
+  const W=1400,H=820; svg.innerHTML='';
+  const maxFiles = Math.min(fileNames.length, 12);
+  const fileNodes = fileNames.slice(0,maxFiles).map((f,i)=>({id:'F'+i,label:ellipseText(shortFileName(f),14),full:shortFileName(f),x:140,y:80+i*((H-160)/Math.max(1,maxFiles-1||1)),color:'#10b981',shape:'circle'}));
+  const numNodes = analysis.sharedNumbers.slice(0,14).map((n,i)=>({id:'N'+i,label:n.number,full:n.number,x:720,y:90+i*50,color:'#2563eb',shape:'circle',radius: Math.max(30, Math.min(42, 24 + n.number.length)) }));
+  const imeiNodes = analysis.sharedImei.slice(0,10).map((m,i)=>({id:'I'+i,label:'IMEI:'+m.imei.slice(-6),full:m.imei,x:1220,y:100+i*66,color:'#f59e0b',shape:'rect'}));
+  function line(x1,y1,x2,y2){ const l=document.createElementNS('http://www.w3.org/2000/svg','line'); l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); l.setAttribute('stroke','#94a3b8'); l.setAttribute('stroke-width','1.6'); svg.appendChild(l); }
+  numNodes.forEach((n, idx)=>{ const src = analysis.sharedNumbers[idx]; const matchingFiles = src.files.split(' | '); fileNodes.forEach(f=>{ if(matchingFiles.includes(f.full)) line(f.x+35, f.y, n.x-38, n.y); }); });
+  imeiNodes.forEach((m, idx)=>{ const src = analysis.sharedImei[idx]; numNodes.forEach((n, ni)=>{ const nn = analysis.sharedNumbers[ni]; if(nn && nn.sharedImei && nn.sharedImei.includes(src.full)) line(n.x+40, n.y, m.x-60, m.y); }); });
+
+  fileNodes.forEach(node=>drawCircleNode(node,28));
+  numNodes.forEach(node=>drawCircleNode(node,node.radius));
+  imeiNodes.forEach(node=>drawRectNode(node,120,40));
+
+  function drawCircleNode(node,r){
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',node.x); c.setAttribute('cy',node.y); c.setAttribute('r',r); c.setAttribute('fill',node.color); c.setAttribute('stroke','#0f172a'); c.setAttribute('stroke-width','1.8');
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',node.x); t.setAttribute('y',node.y+5); t.setAttribute('text-anchor','middle'); t.setAttribute('font-size',fitTextToCircle(node.label,r)); t.setAttribute('fill','#fff'); t.setAttribute('font-weight','700'); t.textContent = ellipseText(node.label, r >= 36 ? 11 : 8);
+    const title=document.createElementNS('http://www.w3.org/2000/svg','title'); title.textContent=node.full;
+    g.appendChild(title); g.appendChild(c); g.appendChild(t); svg.appendChild(g);
   }
-  function line(x1,y1,x2,y2){ const l=document.createElementNS('http://www.w3.org/2000/svg','line'); l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); l.setAttribute('stroke','#94a3b8'); l.setAttribute('stroke-width','1.5'); svg.appendChild(l); }
-  nums.forEach((n, idx)=>{
-    const src = analysis.sharedNumbers[idx];
-    const matchingFiles = src.files.split(' | ');
-    files.forEach(f=>{ if(matchingFiles.includes(f.label)) line(f.x+28, f.y, n.x-30, n.y); });
-  });
-  imeis.forEach((m, idx)=>{
-    const src = analysis.sharedImei[idx];
-    nums.forEach((n, ni)=>{ const nn = analysis.sharedNumbers[ni]; if(nn && nn.sharedImei && nn.sharedImei.includes(src.imei)) line(n.x+30, n.y, m.x-26, m.y); });
-  });
-  files.forEach(f=>circle(f,28)); nums.forEach(n=>circle(n,30)); imeis.forEach(i=>circle(i,26));
+  function drawRectNode(node,w,h){
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',node.x-w/2); r.setAttribute('y',node.y-h/2); r.setAttribute('width',w); r.setAttribute('height',h); r.setAttribute('rx','12'); r.setAttribute('fill',node.color); r.setAttribute('stroke','#0f172a'); r.setAttribute('stroke-width','1.8');
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',node.x); t.setAttribute('y',node.y+5); t.setAttribute('text-anchor','middle'); t.setAttribute('font-size','13'); t.setAttribute('fill','#fff'); t.setAttribute('font-weight','700'); t.textContent = node.label;
+    const title=document.createElementNS('http://www.w3.org/2000/svg','title'); title.textContent='IMEI الكامل: '+node.full;
+    g.appendChild(title); g.appendChild(r); g.appendChild(t); svg.appendChild(g);
+  }
 }
+
+function renderSharedSitesTable(sites){
+  const tbody = document.querySelector('#sharedSitesTable tbody');
+  tbody.innerHTML='';
+  sites.forEach((row,i)=>{
+    const tr = document.createElement('tr');
+    const checked = selectedSiteKeys.has(row.key) ? 'checked' : '';
+    tr.innerHTML = `<td>${i+1}</td><td><input class="site-check" type="checkbox" data-key="${row.key}" ${checked}></td><td>${row.site}</td><td>${row.fileCount}</td><td>${row.numbers}</td><td>${row.records}</td><td>${row.city}</td><td>${row.coord}</td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.site-check').forEach(ch=>ch.addEventListener('change', e=>{
+    const key = e.target.dataset.key;
+    if(e.target.checked) selectedSiteKeys.add(key); else selectedSiteKeys.delete(key);
+    updateSelectedSitesCount();
+  }));
+  updateSelectedSitesCount();
+}
+function updateSelectedSitesCount(){ selectedSitesCount.textContent = `عدد المواقع المحددة: ${selectedSiteKeys.size}`; }
+
+function renderMapForSelectedSites(){
+  if(!latest) return showError('لا توجد نتائج بعد.');
+  initMap();
+  mapLayerGroup.clearLayers();
+  const selected = latest.analysis.sharedSites.filter(s=>selectedSiteKeys.has(s.key) && s.lat && s.lon && !isNaN(parseFloat(s.lat)) && !isNaN(parseFloat(s.lon)));
+  if(!selected.length){ showError('لم يتم تحديد مواقع صالحة ذات إحداثيات لعرضها على الخريطة.'); return; }
+  hideError();
+  const bounds = [];
+  selected.forEach((s,idx)=>{
+    const lat = parseFloat(s.lat), lon = parseFloat(s.lon);
+    bounds.push([lat,lon]);
+    const marker = L.marker([lat,lon]).addTo(mapLayerGroup).bindPopup(`<b>${idx+1}. ${s.site}</b><br>المدينة: ${s.city}<br>عدد الملفات: ${s.fileCount}<br>عدد السجلات: ${s.records}<br>الأرقام: ${s.numbers}<br>الإحداثيات: ${s.coord}`);
+    L.circle([lat,lon], {radius:300, color:'#2563eb', weight:2, fillColor:'#60a5fa', fillOpacity:0.12}).addTo(mapLayerGroup);
+    marker.openPopup();
+  });
+  if(bounds.length === 1) map.setView(bounds[0], 16); else map.fitBounds(bounds, {padding:[30,30]});
+}
+
+function fillTable(id, rows, cols){ const tbody=document.querySelector(`#${id} tbody`); tbody.innerHTML=''; rows.forEach((r,i)=>{ const tr=document.createElement('tr'); [i+1,...cols.map(c=>r[c]??'')].forEach(v=>{ const td=document.createElement('td'); td.textContent=v; tr.appendChild(td); }); tbody.appendChild(tr); }); }
 
 function exportExcel(){
   if(!latest) return showError('لا توجد نتائج لتصديرها.');
@@ -313,23 +346,16 @@ function exportExcel(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(latest.analysis.timeOverlaps.map(r=>({الرقم:r.number,الملف1:r.file1,الملف2:r.file2,الفرق_بالدقائق:r.diffMin,الموقع:r.site,IMEI:r.imei,الوقت1:r.time1,الوقت2:r.time2}))), 'TimeOverlap');
   XLSX.writeFile(wb,'multi_cdr_intersection_results.xlsx');
 }
-
-function svgToDataUri(){
-  const svg = document.getElementById('networkSvg');
-  const xml = new XMLSerializer().serializeToString(svg);
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
-}
-
+function svgToDataUri(){ const xml = new XMLSerializer().serializeToString(document.getElementById('networkSvg')); return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml); }
+async function mapToImage(){ if(!map) return null; return null; }
 function exportPdf(){
   if(!latest) return showError('لا توجد نتائج لتصديرها.');
   const {jsPDF} = window.jspdf; const doc = new jsPDF({orientation:'l', unit:'mm', format:'a4'});
   doc.setFontSize(16); doc.text('Multi CDR Intersection Report', 14, 14);
   doc.autoTable({ startY:20, head:[['Metric','Value']], body:[ ['Files', latest.analysis.stats.files], ['Total Rows', latest.analysis.stats.totalRows], ['Shared Numbers', latest.analysis.stats.sharedNumbers], ['Shared IMEI', latest.analysis.stats.sharedImei], ['Shared Sites', latest.analysis.stats.sharedSites], ['Time Overlaps', latest.analysis.stats.timeOverlaps] ]});
-  doc.addPage();
-  doc.text('Shared Numbers', 14, 14);
+  doc.addPage(); doc.text('Shared Numbers', 14, 14);
   doc.autoTable({ startY:18, head:[['#','Number','Files','Records','First','Last','Shared IMEI']], body: latest.analysis.sharedNumbers.slice(0,25).map((r,i)=>[i+1,r.number,r.fileCount,r.records,r.first,r.last,r.sharedImei]), styles:{fontSize:8} });
-  doc.addPage();
-  doc.text('Network', 14, 14);
+  doc.addPage(); doc.text('Network', 14, 14);
   try{ doc.addImage(svgToDataUri(),'SVG',10,20,270,150); }catch(e){ doc.text('Could not embed SVG network in PDF',14,30); }
   doc.save('multi_cdr_intersection_report.pdf');
 }
@@ -340,15 +366,12 @@ analyzeBtn.addEventListener('click', async ()=>{
     const files = Array.from(filesInput.files || []);
     if(files.length < 2) throw new Error('اختر ملفين على الأقل.');
     if(typeof XLSX === 'undefined') throw new Error('مكتبة Excel لم تُحمّل. تأكد من وجود إنترنت.');
-    const loaded = [];
-    for(const f of files){ loaded.push(await readFile(f)); }
-    const standardized = loaded.map(standardizeFileRows);
-    const allRows = standardized.flat();
+    const loaded = []; for(const f of files) loaded.push(await readFile(f));
+    const allRows = loaded.map(standardizeFileRows).flat();
     if(!allRows.length) throw new Error('لم يتم العثور على بيانات قابلة للتحليل داخل الملفات.');
-    const minFiles = Number(minFilesSelect.value);
-    const timeWindow = Number(timeWindowSelect.value);
-    const analysis = analyzeIntersection(allRows, loaded.map(x=>x.name), minFiles, timeWindow);
+    const analysis = analyzeIntersection(allRows, loaded.map(x=>shortFileName(x.name)), Number(minFilesSelect.value), Number(timeWindowSelect.value));
     latest = {loaded, analysis};
+    selectedSiteKeys = new Set();
     renderStats(analysis.stats);
     document.getElementById('summaryBadges').innerHTML = `
       <span class="badge">أكثر رقم مشترك: ${analysis.sharedNumbers[0]?.number || '-'}</span>
@@ -356,16 +379,21 @@ analyzeBtn.addEventListener('click', async ()=>{
       <span class="badge">أكثر موقع مشترك: ${analysis.sharedSites[0]?.site || '-'}</span>`;
     fillTable('sharedNumbersTable', analysis.sharedNumbers, ['number','fileCount','files','records','first','last','sharedImei']);
     fillTable('sharedImeiTable', analysis.sharedImei, ['imei','fileCount','numbers','first','last']);
-    fillTable('sharedSitesTable', analysis.sharedSites, ['site','fileCount','numbers','records']);
+    renderSharedSitesTable(analysis.sharedSites);
     fillTable('timeOverlapTable', analysis.timeOverlaps, ['number','file1','file2','diffMin','site','imei','time1','time2']);
-    renderNetwork(loaded.map(x=>x.name), analysis);
-    resultsDiv.style.display = 'block';
+    renderNetwork(loaded.map(x=>shortFileName(x.name)), analysis);
+    resultsDiv.style.display='block';
+    initMap(); mapLayerGroup.clearLayers(); updateSelectedSitesCount(); setTimeout(()=>map.invalidateSize(), 100);
     showSuccess(`تم التحليل بنجاح.\nعدد الملفات: ${loaded.length}\nعدد الأرقام المشتركة: ${analysis.sharedNumbers.length}`);
   }catch(err){ console.error(err); showError('فشل التحليل:\n' + (err.message || err)); }
 });
+showSelectedSitesBtn.addEventListener('click', renderMapForSelectedSites);
+selectAllSitesBtn.addEventListener('click', ()=>{ if(!latest) return; latest.analysis.sharedSites.forEach(s=>{ if(s.lat && s.lon) selectedSiteKeys.add(s.key); }); renderSharedSitesTable(latest.analysis.sharedSites); });
+clearSiteSelectionBtn.addEventListener('click', ()=>{ selectedSiteKeys.clear(); if(latest) renderSharedSitesTable(latest.analysis.sharedSites); if(mapLayerGroup) mapLayerGroup.clearLayers(); });
 pdfBtn.addEventListener('click', exportPdf);
 excelBtn.addEventListener('click', exportExcel);
-clearBtn.addEventListener('click', ()=>{ hideError(); hideSuccess(); latest=null; resultsDiv.style.display='none'; document.querySelectorAll('tbody').forEach(x=>x.innerHTML=''); document.getElementById('stats').innerHTML=''; document.getElementById('summaryBadges').innerHTML=''; document.getElementById('networkSvg').innerHTML=''; filesInput.value=''; });
+clearBtn.addEventListener('click', ()=>{ hideError(); hideSuccess(); latest=null; selectedSiteKeys.clear(); resultsDiv.style.display='none'; document.querySelectorAll('tbody').forEach(x=>x.innerHTML=''); document.getElementById('stats').innerHTML=''; document.getElementById('summaryBadges').innerHTML=''; document.getElementById('networkSvg').innerHTML=''; if(mapLayerGroup) mapLayerGroup.clearLayers(); updateSelectedSitesCount(); filesInput.value=''; });
+window.addEventListener('load', ()=>setTimeout(initMap,100));
 </script>
 </body>
 </html>
